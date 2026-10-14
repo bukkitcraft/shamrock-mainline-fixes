@@ -1,0 +1,33 @@
+From a4de03ec8560c900307bf82173ba7106f011e37e Mon Sep 17 00:00:00 2001
+From: bukkitcraft <bukkitcraft@proton.me>
+Date: Wed, 14 Oct 2026 16:59:18 +0300
+Subject: [PATCH 5/6] arm64: dts: qcom: msm8952: Eliminate TSENS unhandled
+ level IRQ storm
+
+On MSM8952, tsens-v0_1 does not implement .set_trips. When unmapped sensor
+channels violate hardware trip thresholds, the level-triggered IRQ 184 (GIC 216)
+cannot be cleared by the driver, creating an interrupt storm of ~42,000 IRQs/sec
+pegging CPU 0 at 100% and causing massive system stutter.
+
+Remove the interrupts property from the tsens node to prevent the storm.
+Thermal monitoring continues via polling without interrupt overhead.
+---
+ arch/arm64/boot/dts/qcom/msm8952.dtsi | 2 --
+ 1 file changed, 2 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/msm8952.dtsi b/arch/arm64/boot/dts/qcom/msm8952.dtsi
+index 15cff4c98..b842f4649 100644
+--- a/arch/arm64/boot/dts/qcom/msm8952.dtsi
++++ b/arch/arm64/boot/dts/qcom/msm8952.dtsi
+@@ -801,8 +801,6 @@ tsens: thermal-sensor@4a9000 {
+ 					"s8_p1", "s8_p2",
+ 					"s9_p1", "s9_p2",
+ 					"s10_p1", "s10_p2";
+-			interrupts = <GIC_SPI 184 IRQ_TYPE_LEVEL_HIGH>;
+-			interrupt-names = "uplow";
+ 			#thermal-sensor-cells = <1>;
+ 			#qcom,sensors = <11>;
+ 		};
+-- 
+2.55.0
+

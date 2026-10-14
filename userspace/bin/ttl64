@@ -1,0 +1,16 @@
+#!/bin/sh
+if [ "$(id -u)" -ne 0 ]; then
+    exec sudo "$0" "$@"
+fi
+
+TARGET_TTL=64
+sysctl -w net.ipv4.ip_default_ttl=$TARGET_TTL > /dev/null
+
+nft delete table ip mangle_ttl 2>/dev/null || true
+nft add table ip mangle_ttl
+nft "add chain ip mangle_ttl post { type filter hook postrouting priority -150; }"
+nft add rule ip mangle_ttl post ip ttl set $TARGET_TTL
+
+echo "[OK] TTL değeri başarıyla $TARGET_TTL olarak ayarlandı!"
+echo "     - Kernel varsayılanı: $(cat /proc/sys/net/ipv4/ip_default_ttl)"
+echo "     - Nftables mangling : Aktif ($TARGET_TTL)"

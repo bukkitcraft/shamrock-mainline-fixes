@@ -1,0 +1,38 @@
+From e3692201c748c39b591538205e45d1076017eb19 Mon Sep 17 00:00:00 2001
+From: bukkitcraft <bukkitcraft@proton.me>
+Date: Wed, 14 Oct 2026 16:59:08 +0300
+Subject: [PATCH 4/6] ASoC: qcom: apq8016_sbc: Add Speaker DAPM widget and pin
+ switch
+
+The apq8016_sbc machine driver only registered Headphone Jack and Mic widgets,
+causing devm_snd_soc_register_card() to fail whenever a Speaker route or
+external speaker amplifier was specified in device tree audio-routing.
+
+Add SND_SOC_DAPM_SPK("Speaker", NULL) and SOC_DAPM_PIN_SWITCH("Speaker") so
+boards using external speaker amplifiers (such as AW8738 on GM 5 Plus) can
+register their audio card successfully.
+---
+ sound/soc/qcom/apq8016_sbc.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/sound/soc/qcom/apq8016_sbc.c b/sound/soc/qcom/apq8016_sbc.c
+index 809fa154f..ca7d41a94 100644
+--- a/sound/soc/qcom/apq8016_sbc.c
++++ b/sound/soc/qcom/apq8016_sbc.c
+@@ -281,11 +281,13 @@ static void msm8916_qdsp6_add_ops(struct snd_soc_card *card)
+ 
+ static const struct snd_kcontrol_new apq8016_sbc_snd_controls[] = {
+ 	SOC_DAPM_PIN_SWITCH("Headphone Jack"),
++	SOC_DAPM_PIN_SWITCH("Speaker"),
+ 	SOC_DAPM_PIN_SWITCH("Mic Jack"),
+ };
+ 
+ static const struct snd_soc_dapm_widget apq8016_sbc_dapm_widgets[] = {
+ 	SND_SOC_DAPM_HP("Headphone Jack", NULL),
++	SND_SOC_DAPM_SPK("Speaker", NULL),
+ 	SND_SOC_DAPM_MIC("Mic Jack", NULL),
+ 	SND_SOC_DAPM_MIC("Handset Mic", NULL),
+ 	SND_SOC_DAPM_MIC("Headset Mic", NULL),
+-- 
+2.55.0
+

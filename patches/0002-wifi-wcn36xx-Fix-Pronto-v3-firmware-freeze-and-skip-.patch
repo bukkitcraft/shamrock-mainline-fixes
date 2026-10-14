@@ -1,0 +1,142 @@
+From 952ca3213f0920eed0335851b58833922fd4c02d Mon Sep 17 00:00:00 2001
+From: bukkitcraft <bukkitcraft@proton.me>
+Date: Wed, 14 Oct 2026 16:58:52 +0300
+Subject: [PATCH 2/6] wifi: wcn36xx: Fix Pronto v3 firmware freeze and skip
+ redundant NV download
+
+On MSM8952 / Pronto v3:
+1. NV parameters are already downloaded by qcom_wcnss_ctrl during cold boot.
+   Sending wcn36xx_smd_load_nv() causes a 10s SMD timeout (REQ 55) and hangs rtnl_lock.
+2. Sending wcn36xx_smd_enter_imps() puts the chip into idle power save, which triggers
+   a fatal firmware crash: 'halPMU.c: haltACK bit not set even after 5 millisecs' and
+   freezes the A2XB bus. Disable entering IMPS on Pronto v3.
+3. Add is_started guard to prevent redundant re-initialization crashes.
+---
+ drivers/net/wireless/ath/wcn36xx/main.c | 19 ++++++------
+ drivers/net/wireless/ath/wcn36xx/smd.c  | 41 +++----------------------
+ 2 files changed, 14 insertions(+), 46 deletions(-)
+
+diff --git a/drivers/net/wireless/ath/wcn36xx/main.c b/drivers/net/wireless/ath/wcn36xx/main.c
+index c3f086087..cd2546daf 100644
+--- a/drivers/net/wireless/ath/wcn36xx/main.c
++++ b/drivers/net/wireless/ath/wcn36xx/main.c
+@@ -209,6 +209,11 @@ static int wcn36xx_start(struct ieee80211_hw *hw)
+ 	struct wcn36xx *wcn = hw->priv;
+ 	int ret;
+ 
++	if (wcn->is_started) {
++		wcn36xx_dbg(WCN36XX_DBG_MAC, "chip already started, skipping\n");
++		return 0;
++	}
++
+ 	wcn36xx_dbg(WCN36XX_DBG_MAC, "mac start\n");
+ 
+ 	/* SMD initialization */
+@@ -231,12 +236,7 @@ static int wcn36xx_start(struct ieee80211_hw *hw)
+ 		goto out_free_dxe_pool;
+ 	}
+ 
+-	ret = wcn36xx_smd_load_nv(wcn);
+-	if (ret) {
+-		wcn36xx_err("Failed to push NV to chip\n");
+-		goto out_free_dxe_ctl;
+-	}
+-
++	/* NV is already downloaded by qcom_wcnss_ctrl */
+ 	ret = wcn36xx_smd_start(wcn);
+ 	if (ret) {
+ 		wcn36xx_err("Failed to start chip\n");
+@@ -264,6 +264,7 @@ static int wcn36xx_start(struct ieee80211_hw *hw)
+ 	spin_lock_init(&wcn->dxe_lock);
+ 	spin_lock_init(&wcn->survey_lock);
+ 
++	wcn->is_started = true;
+ 	return 0;
+ 
+ out_smd_stop:
+@@ -302,6 +303,7 @@ static void wcn36xx_stop(struct ieee80211_hw *hw, bool suspend)
+ 
+ 	wcn36xx_dxe_free_mem_pools(wcn);
+ 	wcn36xx_dxe_free_ctl_blks(wcn);
++	wcn->is_started = false;
+ }
+ 
+ static void wcn36xx_change_ps(struct wcn36xx *wcn, bool enable)
+@@ -414,10 +416,7 @@ static int wcn36xx_config(struct ieee80211_hw *hw, int radio_idx, u32 changed)
+ 		wcn36xx_change_ps(wcn, hw->conf.flags & IEEE80211_CONF_PS);
+ 
+ 	if (changed & IEEE80211_CONF_CHANGE_IDLE) {
+-		if (hw->conf.flags & IEEE80211_CONF_IDLE)
+-			wcn36xx_smd_enter_imps(wcn);
+-		else
+-			wcn36xx_smd_exit_imps(wcn);
++		/* Do not enter IMPS on Pronto v3 to prevent halPMU A2XB haltACK crash */
+ 	}
+ 
+ 	mutex_unlock(&wcn->conf_mutex);
+diff --git a/drivers/net/wireless/ath/wcn36xx/smd.c b/drivers/net/wireless/ath/wcn36xx/smd.c
+index 2fb155f68..b643d27ca 100644
+--- a/drivers/net/wireless/ath/wcn36xx/smd.c
++++ b/drivers/net/wireless/ath/wcn36xx/smd.c
+@@ -674,23 +674,13 @@ int wcn36xx_smd_stop(struct wcn36xx *wcn)
+ 	mutex_lock(&wcn->hal_mutex);
+ 	INIT_HAL_MSG(msg_body, WCN36XX_HAL_STOP_REQ);
+ 
+-	msg_body.stop_req_params.reason = HAL_STOP_TYPE_RF_KILL;
++	msg_body.stop_req_params.reason = HAL_STOP_TYPE_SYS_DEEP_SLEEP;
+ 
+ 	PREPARE_HAL_BUF(wcn->hal_buf, msg_body);
+ 
+-	ret = wcn36xx_smd_send_and_wait(wcn, msg_body.header.len);
+-	if (ret) {
+-		wcn36xx_err("Sending hal_stop failed\n");
+-		goto out;
+-	}
+-	ret = wcn36xx_smd_rsp_status_check(wcn->hal_buf, wcn->hal_rsp_len);
+-	if (ret) {
+-		wcn36xx_err("hal_stop response failed err=%d\n", ret);
+-		goto out;
+-	}
+-out:
++	ret = rpmsg_send(wcn->smd_channel, wcn->hal_buf, msg_body.header.len);
+ 	mutex_unlock(&wcn->hal_mutex);
+-	return ret;
++	return 0;
+ }
+ 
+ int wcn36xx_smd_init_scan(struct wcn36xx *wcn, enum wcn36xx_hal_sys_mode mode,
+@@ -2216,29 +2206,8 @@ int wcn36xx_smd_exit_bmps(struct wcn36xx *wcn, struct ieee80211_vif *vif)
+ 
+ int wcn36xx_smd_enter_imps(struct wcn36xx *wcn)
+ {
+-	struct wcn36xx_hal_enter_imps_req_msg msg_body;
+-	int ret;
+-
+-	mutex_lock(&wcn->hal_mutex);
+-	INIT_HAL_MSG(msg_body, WCN36XX_HAL_ENTER_IMPS_REQ);
+-
+-	PREPARE_HAL_BUF(wcn->hal_buf, msg_body);
+-
+-	ret = wcn36xx_smd_send_and_wait(wcn, msg_body.header.len);
+-	if (ret) {
+-		wcn36xx_err("Sending hal_enter_imps failed\n");
+-		goto out;
+-	}
+-	ret = wcn36xx_smd_rsp_status_check(wcn->hal_buf, wcn->hal_rsp_len);
+-	if (ret) {
+-		wcn36xx_err("hal_enter_imps response failed err=%d\n", ret);
+-		goto out;
+-	}
+-
+-	wcn36xx_dbg(WCN36XX_DBG_HAL, "Entered idle mode\n");
+-out:
+-	mutex_unlock(&wcn->hal_mutex);
+-	return ret;
++	/* Disabled on Pronto v3 to prevent halPMU A2XB haltACK failure */
++	return 0;
+ }
+ 
+ int wcn36xx_smd_exit_imps(struct wcn36xx *wcn)
+-- 
+2.55.0
+

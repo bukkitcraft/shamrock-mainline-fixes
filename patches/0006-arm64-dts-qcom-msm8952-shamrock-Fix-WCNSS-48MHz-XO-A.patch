@@ -1,0 +1,100 @@
+From 8b4d3ba9a11b5563f30b079d6b6229ae69066088 Mon Sep 17 00:00:00 2001
+From: bukkitcraft <bukkitcraft@proton.me>
+Date: Wed, 14 Oct 2026 16:59:26 +0300
+Subject: [PATCH 6/6] arm64: dts: qcom: msm8952-shamrock: Fix WCNSS 48MHz XO,
+ AW8738 speaker amp and audio routing
+
+1. WCNSS Iris:
+   General Mobile GM 5 Plus uses WCN3660B with a 48 MHz external crystal (XO).
+   Update compatible from qcom,wcn3620 (19.2 MHz) to qcom,wcn3660b and bind
+   required power supplies (pm8950_l7, l19, l17, l6).
+
+2. AW8738 Speaker Amplifier:
+   Replace simple-audio-amplifier with awinic,aw8738 (one-wire pulse control on
+   GPIO 38 in mode 5). Connect audio routing from HPH_R to Speaker Amp IN and
+   Speaker Amp OUT to Speaker.
+---
+ .../qcom/msm8952-generalmobile-shamrock.dts   | 31 ++++++++++++++-----
+ 1 file changed, 24 insertions(+), 7 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/msm8952-generalmobile-shamrock.dts b/arch/arm64/boot/dts/qcom/msm8952-generalmobile-shamrock.dts
+index 6549afe95..adf6b399d 100644
+--- a/arch/arm64/boot/dts/qcom/msm8952-generalmobile-shamrock.dts
++++ b/arch/arm64/boot/dts/qcom/msm8952-generalmobile-shamrock.dts
+@@ -138,10 +138,11 @@ multi-led {
+ 	};
+ 
+ 	speaker_amp: audio-amplifier {
+-		compatible = "simple-audio-amplifier";
++		compatible = "awinic,aw8738";
+ 		pinctrl-0 = <&speaker_amp_default>;
+ 		pinctrl-names = "default";
+-		enable-gpios = <&tlmm 38 GPIO_ACTIVE_HIGH>;
++		mode-gpios = <&tlmm 38 GPIO_ACTIVE_HIGH>;
++		awinic,mode = <5>;
+ 		sound-name-prefix = "Speaker Amp";
+ 	};
+ 
+@@ -392,7 +393,6 @@ &ibb {
+ 	regulator-min-microvolt = <4600000>;
+ 	regulator-max-microvolt = <6000000>;
+ 	qcom,soft-start-us = <800>;
+-	regulator-over-current-protection;
+ 	regulator-soft-start;
+ 	regulator-pull-down;
+ 	qcom,discharge-resistor-kohms = <32>;
+@@ -402,7 +402,6 @@ &lab {
+ 	regulator-min-microvolt = <4600000>;
+ 	regulator-max-microvolt = <6000000>;
+ 	qcom,soft-start-us = <800>;
+-	regulator-over-current-protection;
+ 	regulator-soft-start;
+ 	regulator-pull-down;
+ };
+@@ -540,7 +539,6 @@ &lpass_codec {
+ };
+ 
+ &sound {
+-	// TODO: Sound doesn't work
+ 	model = "gm-shamrock";
+ 
+ 	audio-routing =
+@@ -556,8 +554,10 @@ &sound {
+ 			"LEFTIN", "HPH_L",
+ 			"RIGHTIN", "HPH_R",
+ 			"Headphone Jack", "HPLEFT",
+-			"Headphone Jack", "HPRIGHT";
+-	aux-devs = <&tpa6130a2>;
++			"Headphone Jack", "HPRIGHT",
++			"Speaker Amp IN", "HPH_R",
++			"Speaker", "Speaker Amp OUT";
++	aux-devs = <&tpa6130a2>, <&speaker_amp>;
+ 
+ 	status = "okay";
+ };
+@@ -816,4 +816,21 @@ &sleep_clk {
+ 
+ &xo_board {
+ 	clock-frequency = <19200000>;
++};
++
++&wcnss_mem {
++	status = "okay";
++};
++
++&wcnss {
++	vddpx-supply = <&pm8950_l6>;
++	status = "okay";
++};
++
++&wcnss_iris {
++	compatible = "qcom,wcn3660b";
++	vddxo-supply = <&pm8950_l7>;
++	vddrfa-supply = <&pm8950_l19>;
++	vddpa-supply = <&pm8950_l17>;
++	vdddig-supply = <&pm8950_l6>;
+ };
+\ No newline at end of file
+-- 
+2.55.0
+
