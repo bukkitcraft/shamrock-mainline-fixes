@@ -1,7 +1,7 @@
 From 8b4d3ba9a11b5563f30b079d6b6229ae69066088 Mon Sep 17 00:00:00 2001
 From: bukkitcraft <bukkitcraft@proton.me>
 Date: Wed, 14 Oct 2026 16:59:26 +0300
-Subject: [PATCH 6/6] arm64: dts: qcom: msm8952-shamrock: Fix WCNSS 48MHz XO,
+Subject: [PATCH 6/9] arm64: dts: qcom: msm8952-shamrock: Fix WCNSS 48MHz XO,
  AW8738 speaker amp and audio routing
 
 1. WCNSS Iris:

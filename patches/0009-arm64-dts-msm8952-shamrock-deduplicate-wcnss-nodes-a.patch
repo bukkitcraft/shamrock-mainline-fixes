@@ -1,0 +1,67 @@
+From 98c5afa5163560ebb4b282601b8d60d565c6de12 Mon Sep 17 00:00:00 2001
+From: bukkitcraft <bukkitcraft@proton.me>
+Date: Thu, 15 Oct 2026 19:35:18 +0300
+Subject: [PATCH 9/9] arm64: dts: msm8952-shamrock: deduplicate wcnss nodes and
+ fix pronto v3 bmps
+
+---
+ .../dts/qcom/msm8952-generalmobile-shamrock.dts    | 14 --------------
+ drivers/net/wireless/ath/wcn36xx/main.c            |  4 ++++
+ drivers/net/wireless/ath/wcn36xx/wcn36xx.h         |  1 +
+ 3 files changed, 5 insertions(+), 14 deletions(-)
+
+diff --git a/arch/arm64/boot/dts/qcom/msm8952-generalmobile-shamrock.dts b/arch/arm64/boot/dts/qcom/msm8952-generalmobile-shamrock.dts
+index 2866c70ea..89d84f60c 100644
+--- a/arch/arm64/boot/dts/qcom/msm8952-generalmobile-shamrock.dts
++++ b/arch/arm64/boot/dts/qcom/msm8952-generalmobile-shamrock.dts
+@@ -452,20 +452,6 @@ &ramoops_mem {
+ 	status = "okay";
+ };
+ 
+-&wcnss {
+-	vddpx-supply = <&pm8950_l5>;
+-
+-//	status = "okay";
+-};
+-
+-&wcnss_iris {
+-	compatible = "qcom,wcn3660b";
+-
+-	vddxo-supply = <&pm8950_l7>;
+-	vddrfa-supply = <&pm8950_l19>;
+-	vddpa-supply = <&pm8950_l9>;
+-	vdddig-supply = <&pm8950_l5>;
+-};
+ 
+ &wcnss_mem {
+ 	status = "okay";
+diff --git a/drivers/net/wireless/ath/wcn36xx/main.c b/drivers/net/wireless/ath/wcn36xx/main.c
+index cd2546daf..bcba971da 100644
+--- a/drivers/net/wireless/ath/wcn36xx/main.c
++++ b/drivers/net/wireless/ath/wcn36xx/main.c
+@@ -311,6 +311,10 @@ static void wcn36xx_change_ps(struct wcn36xx *wcn, bool enable)
+ 	struct ieee80211_vif *vif = NULL;
+ 	struct wcn36xx_vif *tmp;
+ 
++	/* On Pronto v3 (MSM8952), entering BMPS causes halPMU haltACK crash */
++	if (wcn->is_pronto_v3)
++		return;
++
+ 	list_for_each_entry(tmp, &wcn->vif_list, list) {
+ 		vif = wcn36xx_priv_to_vif(tmp);
+ 		if (enable && !wcn->sw_scan) {
+diff --git a/drivers/net/wireless/ath/wcn36xx/wcn36xx.h b/drivers/net/wireless/ath/wcn36xx/wcn36xx.h
+index 7ee79593c..00ea2d2be 100644
+--- a/drivers/net/wireless/ath/wcn36xx/wcn36xx.h
++++ b/drivers/net/wireless/ath/wcn36xx/wcn36xx.h
+@@ -227,6 +227,7 @@ struct wcn36xx {
+ 	u8			wlan_version[WCN36XX_HAL_VERSION_LENGTH + 1];
+ 
+ 	bool		first_boot;
++	bool		is_started;
+ 
+ 	/* IRQs */
+ 	int			tx_irq;
+-- 
+2.55.0
+

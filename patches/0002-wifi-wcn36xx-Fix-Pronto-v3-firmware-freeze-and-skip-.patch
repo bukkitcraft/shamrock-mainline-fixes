@@ -1,7 +1,7 @@
 From 952ca3213f0920eed0335851b58833922fd4c02d Mon Sep 17 00:00:00 2001
 From: bukkitcraft <bukkitcraft@proton.me>
 Date: Wed, 14 Oct 2026 16:58:52 +0300
-Subject: [PATCH 2/6] wifi: wcn36xx: Fix Pronto v3 firmware freeze and skip
+Subject: [PATCH 2/9] wifi: wcn36xx: Fix Pronto v3 firmware freeze and skip
  redundant NV download
 
 On MSM8952 / Pronto v3:

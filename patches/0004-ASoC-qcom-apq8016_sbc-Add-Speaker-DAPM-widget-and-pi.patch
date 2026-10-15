@@ -1,7 +1,7 @@
 From e3692201c748c39b591538205e45d1076017eb19 Mon Sep 17 00:00:00 2001
 From: bukkitcraft <bukkitcraft@proton.me>
 Date: Wed, 14 Oct 2026 16:59:08 +0300
-Subject: [PATCH 4/6] ASoC: qcom: apq8016_sbc: Add Speaker DAPM widget and pin
+Subject: [PATCH 4/9] ASoC: qcom: apq8016_sbc: Add Speaker DAPM widget and pin
  switch
 
 The apq8016_sbc machine driver only registered Headphone Jack and Mic widgets,

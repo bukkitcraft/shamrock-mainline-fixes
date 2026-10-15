@@ -1,7 +1,7 @@
 From 8b8bd5043d9106212f14f031b01bfce0ac6378f6 Mon Sep 17 00:00:00 2001
 From: bukkitcraft <bukkitcraft@proton.me>
 Date: Wed, 14 Oct 2026 16:58:44 +0300
-Subject: [PATCH 1/6] remoteproc: qcom_wcnss: Fix Pronto v3 PIL boot deadlock
+Subject: [PATCH 1/9] remoteproc: qcom_wcnss: Fix Pronto v3 PIL boot deadlock
  and regulator handling
 
 On MSM8952 (Pronto v3), the Pronto firmware does not signal the ready interrupt

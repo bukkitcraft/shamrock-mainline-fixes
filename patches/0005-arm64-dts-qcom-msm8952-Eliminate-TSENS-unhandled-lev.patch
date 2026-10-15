@@ -1,7 +1,7 @@
 From a4de03ec8560c900307bf82173ba7106f011e37e Mon Sep 17 00:00:00 2001
 From: bukkitcraft <bukkitcraft@proton.me>
 Date: Wed, 14 Oct 2026 16:59:18 +0300
-Subject: [PATCH 5/6] arm64: dts: qcom: msm8952: Eliminate TSENS unhandled
+Subject: [PATCH 5/9] arm64: dts: qcom: msm8952: Eliminate TSENS unhandled
  level IRQ storm
 
 On MSM8952, tsens-v0_1 does not implement .set_trips. When unmapped sensor

@@ -1,7 +1,7 @@
 From 44ef28e231b988df381a64a68b5b78bace6e948f Mon Sep 17 00:00:00 2001
 From: bukkitcraft <bukkitcraft@proton.me>
 Date: Wed, 14 Oct 2026 16:59:01 +0300
-Subject: [PATCH 3/6] drm/panel: panel-dijing-otm1901a: Fix inverted reset GPIO
+Subject: [PATCH 3/9] drm/panel: panel-dijing-otm1901a: Fix inverted reset GPIO
  polarity
 
 In the generated OTM1901A panel driver, reset GPIO polarity was inverted:
